@@ -8,6 +8,7 @@ from org.hipparchus.geometry.euclidean.threed import RotationOrder, Vector3D, Ro
 from org.orekit.attitudes import NadirPointing, YawSteering, LofOffset, FieldAttitude;
 from org.orekit.bodies import CelestialBodyFactory, OneAxisEllipsoid;
 from org.orekit.frames import FramesFactory, LOFType, StaticTransform;
+from org.orekit.geometry.fov import CircularFieldOfView
 from org.orekit.orbits import KeplerianOrbit, PositionAngle;
 from org.orekit.propagation.analytical import EcksteinHechlerPropagator;
 from org.orekit.propagation import PropagatorsParallelizer
@@ -26,6 +27,7 @@ def orbit_period(a):
     # seconds
     return 2 * np.pi * np.sqrt(a**3 / 3.986e14)
 def propogate_constellation(walker):
+    inertialFrame = FramesFactory.getEME2000()
     earthFrame = FramesFactory.getITRF(IERSConventions.IERS_2010, True)
     Earth = OneAxisEllipsoid(Constants.WGS84_EARTH_EQUATORIAL_RADIUS,
                              Constants.WGS84_EARTH_FLATTENING,
@@ -49,6 +51,7 @@ def propogate_constellation(walker):
     propogationDuration = 10*orbit_period(walker.a)
     timeStep = 60.0 #seconds
     discrete_times = np.arange(timeStep, propogationDuration + timeStep, timeStep)
+    fov = CircularFieldOfView(Vector3D.NEG_K, np.radians(40), np.radians(0))
     fovEvent = FieldOfViewDetector()
     for i in discrete_times:
         state = propagator.propagate(epochDate, epochDate.shiftedBy(float(i)))
