@@ -22,8 +22,6 @@ i = 28.5 #degrees
 semiMajorAxis = (altitude+6378) * 1000
 w = Walker("One", semiMajorAxis, np.radians(i), 20, 3, 1, epochDate, payload)
 w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(1), w)
+cdef = CoverageDefinition("One", np.radians(10), w)
 fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
 fovanal.call()
-for i in w.sats:
-    print(i.orbit)
