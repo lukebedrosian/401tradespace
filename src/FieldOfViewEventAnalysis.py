@@ -87,7 +87,7 @@ class MultiSatStepNormalizer(PythonMultiSatStepHandler):
                             break
             percentCoverage = float(sum(inView)) / float(len(inView))
             self.coverages.append(percentCoverage)
-        print(self.coverages)
+        # print(self.coverages)
         self.startDate = interpolator1.getCurrentState().getDate()
 
 
@@ -157,12 +157,15 @@ class FieldOfViewEventAnalysis:
         cdef = self.covDefs[0]
         val = 10
         coverages = []
-        normalized_handler = MultiSatStepNormalizer(float(60.0), grid, cdef.constellation.sats, detectors, point_to_satDetector, epochDate, coverages)
+        normalized_handler = MultiSatStepNormalizer(float(60.0*5), grid, cdef.constellation.sats, detectors, point_to_satDetector, epochDate, coverages)
         propagationDuration = 2 * cdef.constellation.sats[0].orbit.getKeplerianPeriod()
         parallelProp = PropagatorsParallelizer(Arrays.asList(propagators), normalized_handler)
         print(normalized_handler.coverages)
         state = parallelProp.propagate(epochDate, epochDate.shiftedBy(float(propagationDuration)))
-
+        # while (normalized_handler.coverages == []):
+        #     pass
+        # print('coverages:', normalized_handler.coverages)
+        return normalized_handler.coverages
         print(epochDate, state.get(0).getDate())
         # for t in discrete_times:
         #     print('t:', t)
