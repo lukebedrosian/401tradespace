@@ -28,6 +28,7 @@ class CoverageDefinition:
                 grid.append(coveragepoint)
                 numPoints += 1
         self.grid = grid
+        self.numPoints = numPoints
 
 class CoveragePoint:
 

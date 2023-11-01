@@ -29,14 +29,14 @@ class MultiSatHandler(PythonMultiSatStepHandler):
 class MultiSatStepNormalizer(PythonMultiSatStepHandler):
 
     def __init__(self, h, grid, sats, detectors, hashmap, epochDate, coverages):
-        self.h = np.abs(h)
+        self.h = np.abs(h) # time step
         self.forward = True
         self.lastState = None
         self.grid = grid
         self.sats = sats
         self.detectors = detectors
         self.hashmap = hashmap
-        self.startDate = epochDate
+        self.nextTime = epochDate
         self.coverages = coverages
         super(MultiSatStepNormalizer, self).__init__()
 
@@ -46,49 +46,41 @@ class MultiSatStepNormalizer(PythonMultiSatStepHandler):
         pass
 
     def handleStep(self, interpolators):
-
         step = self.h
         interpolator1 = OrekitStepInterpolator.cast_(interpolators.get(0)) # interpolators should be interpolated together
-        print(interpolator1.getCurrentState().getDate())
-        if self.startDate.compareTo(interpolator1.getCurrentState().getDate()) >= 0:
+        # print(interpolator1.getCurrentState().getDate())
+        if self.nextTime.compareTo(interpolator1.getCurrentState().getDate()) >= 0:
             return
 
-        self.forward = interpolator1.isForward()
-        if not self.forward:
-            step = -self.h
         self.lastState = interpolator1.getPreviousState()
-        states = []
-        for interpolator in interpolators:
-            state = OrekitStepInterpolator.cast_(interpolator).getCurrentState()
-            states.append(state)
-        nextTime = self.startDate
 
         currentDate = interpolator1.getCurrentState().getDate()
-        nextInStep = xor(self.forward, (nextTime.compareTo(currentDate) > 0))
 
-        while nextTime.compareTo(currentDate) < 0:
-            self.lastState = OrekitStepInterpolator.cast_(interpolators.get(0)).getInterpolatedState(nextTime)
+        while self.nextTime.compareTo(currentDate) <= 0:
+            # print('a', self.nextTime, currentDate)
             states = []
             for interpolator in interpolators:
-                state = OrekitStepInterpolator.cast_(interpolator).getInterpolatedState(nextTime)
+                state = OrekitStepInterpolator.cast_(interpolator).getInterpolatedState(self.nextTime)
                 states.append(state)
-            nextTime = nextTime.shiftedBy(float(step))
-
-            nextInStep = xor(self.forward, nextTime.compareTo(states[0].getDate()) > 0)
-            inView = [0] * len(self.grid)
+            self.nextTime = self.nextTime.shiftedBy(float(step))
+            # print('b', self.nextTime)
+            inView = np.zeros_like(self.grid)
             for s in range(len(self.sats)):
                 state = states[s]
+                # print('c', state.getDate())
                 for p in range(len(self.grid)):
                     dets = self.hashmap[p]
                     for d in range(len(dets)):
                         detector = dets[d]
+                        # print(detector.g(state))
                         if detector.g(state) > 0.0:
                             inView[p] = 1
-                            break
+                            # break
             percentCoverage = float(sum(inView)) / float(len(inView))
             self.coverages.append(percentCoverage)
-        # print(self.coverages)
-        self.startDate = interpolator1.getCurrentState().getDate()
+            # print('d', self.nextTime, currentDate)
+
+        # self.startDate = interpolator1.getCurrentState().getDate()
 
 
     def finish(self, finalStates):
@@ -121,12 +113,7 @@ class FieldOfViewEventAnalysis:
             Constants.WGS84_EARTH_FLATTENING,
             earthFrame)
         epochDate = self.covDefs[0].constellation.epochDate
-        propogationDuration = self.covDefs[0].constellation.sats[0].orbit.getKeplerianPeriod()
-        timeStep = 120.0  # seconds
-        discrete_times = np.arange(timeStep, propogationDuration + timeStep, timeStep)
-        dates = []
-        for shift in discrete_times:
-            dates.append(epochDate.shiftedBy(float(shift)))
+
         for cdef in self.covDefs:
             point_to_satDetector = []
             for i in range(len(cdef.grid)):
@@ -143,8 +130,8 @@ class FieldOfViewEventAnalysis:
                 for p in range(len(cdef.grid)):
                     topo = TopocentricFrame(earth, cdef.grid[p].point, 'target')
                     fd = FieldOfViewDetector(topo, fov)
-                    ed = ElevationDetector(60.0, threshold, topo).withConstantElevation(30.0)
-                    detector = BooleanDetector.andCombine(ed).notCombine(fd)
+                    ed = ElevationDetector(60.0, threshold, topo).withConstantElevation(0.0)
+                    detector = BooleanDetector.andCombine([ed, BooleanDetector.notCombine(fd)])
                     detectors.append(detector)
                     sats.append(cdef.constellation.sats[s])
                     propagator.addEventDetector(detector)
@@ -158,30 +145,10 @@ class FieldOfViewEventAnalysis:
         val = 10
         coverages = []
         normalized_handler = MultiSatStepNormalizer(float(60.0*5), grid, cdef.constellation.sats, detectors, point_to_satDetector, epochDate, coverages)
-        propagationDuration = 2 * cdef.constellation.sats[0].orbit.getKeplerianPeriod()
+        propagationDuration = cdef.constellation.sats[0].orbit.getKeplerianPeriod()
         parallelProp = PropagatorsParallelizer(Arrays.asList(propagators), normalized_handler)
-        print(normalized_handler.coverages)
         state = parallelProp.propagate(epochDate, epochDate.shiftedBy(float(propagationDuration)))
         # while (normalized_handler.coverages == []):
         #     pass
         # print('coverages:', normalized_handler.coverages)
         return normalized_handler.coverages
-        print(epochDate, state.get(0).getDate())
-        # for t in discrete_times:
-        #     print('t:', t)
-        #     inView = [0] * len(grid)
-        #     print('starting propogation')
-        #
-        #     print('state propogated')
-        #     for s in range(len(cdef.constellation.sats)):
-        #         for p in range(len(grid)):
-        #             dets = point_to_satDetector[p]
-        #             for d in range(len(dets)):
-        #                 detector = dets[d]
-        #                 if detector.g(state.get(s)) > 0.0:
-        #                     inView[p] = 1
-        #                     break
-        #     print(inView)
-        #     percentCoverage = float(sum(inView)) / float(len(inView))
-        #     print("Coverage Percent of Globe: " + str(percentCoverage * 100) + "%")
-
