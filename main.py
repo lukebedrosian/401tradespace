@@ -40,57 +40,22 @@ epochDate = AbsoluteDate(2020, 1, 1, 0, 0, 00.000, TimeScalesFactory.getUTC()) #
 # fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
 # coverage = fovanal.call()
 # print(coverage)
-type = "delta"
-altitude = 1000 #km
-i = 90 #degrees
-semiMajorAxis = (altitude+6378) * 1000
-f = 1
+# type = "delta"
+# altitude = 1000 #km
+# i = 90 #degrees
+# semiMajorAxis = (altitude+6378) * 1000
+# f = 1
+#
+# w = Walker("Star", semiMajorAxis, np.radians(i), 25, 5, 2, epochDate, type)
+# w.createConstellation()
+# cdef = CoverageDefinition("One", np.radians(10), w)
+# print(cdef.numPoints)
+# fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
+# coverage = fovanal.call()
+# print(coverage)
+# print(sum(coverage) / len(coverage))
+print()
 
-w = Walker("Star", semiMajorAxis, np.radians(i), 32, 5, 2, epochDate, type)
-w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(10), w)
-print(cdef.numPoints)
-fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
-coverage = fovanal.call()
-print(coverage)
-print(sum(coverage) / len(coverage))
-print()
-w = Walker("Star", semiMajorAxis, np.radians(i), 32, 5, 2.25, epochDate, type)
-w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(10), w)
-print(cdef.numPoints)
-fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
-coverage = fovanal.call()
-print(coverage)
-print(sum(coverage) / len(coverage))
-print()
-w = Walker("Star", semiMajorAxis, np.radians(i), 32, 5, 2.5, epochDate, type)
-w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(10), w)
-print(cdef.numPoints)
-fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
-coverage = fovanal.call()
-print(coverage)
-print(sum(coverage) / len(coverage))
-print()
-w = Walker("Star", semiMajorAxis, np.radians(i), 32, 5, 2.75, epochDate, type)
-w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(10), w)
-print(cdef.numPoints)
-fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
-coverage = fovanal.call()
-print(coverage)
-print(sum(coverage) / len(coverage))
-print()
-w = Walker("Star", semiMajorAxis, np.radians(i), 32, 5, 3 , epochDate, type)
-w.createConstellation()
-cdef = CoverageDefinition("One", np.radians(10), w)
-print(cdef.numPoints)
-fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
-coverage = fovanal.call()
-print(coverage)
-print(sum(coverage) / len(coverage))
-print()
 # w = Walker("Star", semiMajorAxis, np.radians(i), 24, 4, f, epochDate, type)
 # w.createConstellation()
 # w2 = Walker("Delta", semiMajorAxis, np.radians(0.1), 8, 1, f, epochDate, type)
@@ -142,12 +107,14 @@ def a():
     :return: semimajor axis in meters
     """
     h = random.randrange(500, 1000, 10)
+    return float((1000 + 6378) * 1000)
     return float((h + 6378) * 1000)
 
 def i():
     """
        :return: inclination in radians
     """
+    return 90.0
     return float(np.radians(float(random.randrange(0, 900, 1))/10.0))
 
 def n():
@@ -166,17 +133,60 @@ def f():
     """
     :return: relative angular spacing between satellites in adjacent planes
     """
-    return float(random.randrange(0, 360, 1))
+    return float(random.randrange(0, 30, 1))/10.0
 
+
+def n_mut(current):
+    """
+    :return: number of satellites in constellation
+    """
+
+    if random.randrange(1, 100, 1) % 2 == 0:
+        return current + 1
+    return current - 1
+
+
+def p_mut(current):
+    """
+    :return: number of planes in walker-delta constellation
+    """
+    if random.randrange(1, 100, 1) % 2 == 0:
+        return current + 1
+    return current - 1
+
+
+def f_mut(current):
+    """
+    :return: relative angular spacing between satellites in adjacent planes
+    """
+    if random.randrange(1, 100, 1) % 2 == 0:
+        return current + .1
+    return current - .1
 
 def evaluate(individual):
     variables = individual
     print(variables)
-    design = Design("name", parameters, variables)
-    coverage_percent = design.getCoveragePercent()
-    planes = design.numplanes
+    #design = Design("name", parameters, variables)
+    halfangle = parameters[0]
+    granularity = parameters[1]
+    epoch = parameters[2]
+    semimajoraxis = variables[0]
+    inclination = variables[1]
+    numsats = variables[2]
+    numplanes = variables[3]
+    f = variables[4]
+    w = Walker("Star", semimajoraxis, np.radians(inclination), numsats, numplanes, f, epochDate, "delta")
+    w.createConstellation()
+    cdef = CoverageDefinition("One", np.radians(10), w)
+    fovanal = FieldOfViewEventAnalysis([cdef], 90.0)
+    coverage = fovanal.call()
+    print(coverage)
+    print(sum(coverage) / len(coverage))
+    coverage_percent = sum(coverage) / len(coverage)
+    planes = numplanes
     planes_norm = float(planes)/8.0
-    return coverage_percent, planes
+    print(coverage_percent)
+    return coverage_percent, 1.0
 
 def customMutation(individual, indpb):
     for i in range(len(individual)):
@@ -186,11 +196,11 @@ def customMutation(individual, indpb):
             elif i == 1:
                 individual[i] = i()
             elif i == 2:
-                individual[i] = n()
+                individual[i] = n_mut(individual[i])
             elif i == 3:
-                individual[i] = p()
+                individual[i] = p_mut(individual[i])
             elif i == 4:
-                individual[i] = f()
+                individual[i] = f_mut(individual[i])
 
     return individual,
 
@@ -303,4 +313,4 @@ def nsgaii(seed=None):
 
     return pop, logbook, generations
 
-# pop, logbook, generations = nsgaii()
+pop, logbook, generations = nsgaii()

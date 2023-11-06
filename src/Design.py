@@ -15,7 +15,7 @@ class Design:
         self.numplanes = variables[3]
         self.f = variables[4]
 
-        self.constellation = walker.Walker(self.name, self.semimajoraxis, self.inclination, self.numsats, self.numplanes, self.f, self.epoch, "pay")
+        self.constellation = walker.Walker(self.name, self.semimajoraxis, self.inclination, self.numsats, self.numplanes, self.f, self.epoch, "delta")
         self.constellation.createConstellation()
 
         self.coveragedefinition = CoverageDefinition.CoverageDefinition(self.name, self.granularity, self.constellation)
@@ -30,5 +30,5 @@ class Design:
 
     def getCoveragePercent(self):
         coverage = self.coverageanalysis.call()
-        toReturn = float(sum(self.coverage))/float(len(self.coverage))
+        toReturn = float(sum(coverage))/float(len(coverage))
         return toReturn

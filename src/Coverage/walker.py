@@ -44,6 +44,7 @@ class Walker:
                 sat = satellite.Satellite("sat_walker_%d", orbit, self.type)
                 sats.append(sat)
         self.sats = sats
+        print(sats)
 
     def combineWalkers(self, other):
         self.others.append(other)

@@ -151,4 +151,5 @@ class FieldOfViewEventAnalysis:
         # while (normalized_handler.coverages == []):
         #     pass
         # print('coverages:', normalized_handler.coverages)
+        print(normalized_handler.coverages)
         return normalized_handler.coverages
